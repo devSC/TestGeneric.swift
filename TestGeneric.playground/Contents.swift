@@ -98,6 +98,7 @@ protocol Container {
 }
 
 struct IntStack: Container {
+    //bind class
     typealias Item = Int
     var items = [Int]()
     mutating func append(_ item: Int) {
@@ -113,28 +114,147 @@ struct IntStack: Container {
 }
 
 
-protocol Service1 {
-    associatedtype Model
-    func value() -> Model
+/// Extending an Existing Type to Specify an Associated Type
+
+extension Array: Container {}
+
+
+/// Using Type Annotation to Constrain an Associated Type
+
+protocol EquableContainer {
+    associatedtype Item: Equatable //Annotation to Constrain
+    mutating func append(_ item: Item)
+    var count: Int { get }
+    subscript(i: Int) -> Item { get }
 }
 
-protocol Service2 {
-    associatedtype Model
+
+/// Generic Where Clauses
+
+func allItemsMatch<C1: Container, C2: Container>(_ someContainer: C1, _ anotherContainer: C2) -> Bool where C1.Item == C2.Item, C1.Item: Equatable {
+    // Check that both containers contain the same number of items.
+    if someContainer.count != anotherContainer.count {
+        return false
+    }
+    
+    // Check each pair of items to see if they're equivalent.
+    for i in 0..<someContainer.count {
+        if someContainer[i] != anotherContainer[i] {
+            return false
+        }
+    }
+    
+    // All items match, so return true.
+    return true
 }
 
-class FakeSerivce: Service2 {
-    typealias Model = String
-}
-
-class Serivce<S: FakeSerivce>: Service1 {
-    typealias Model = S.Model
-    func value() -> Model {
-        return "String"
+extension Stack: Container {
+    typealias Item = Element
+    
+    var count: Int {
+        return items.count
+    }
+    
+    mutating func append(_ item: Element) {
+        items.append(item)
+    }
+    subscript(i: Int) -> Element {
+        return items[i]
     }
 }
 
-Serivce().value()
+var stackOfStrings = Stack<String>()
+stackOfStrings.push("uno")
+stackOfStrings.push("dos")
+stackOfStrings.push("tres")
+
+var arrayOfStrings = ["uno", "dos", "tres"]
+
+if allItemsMatch(stackOfStrings, arrayOfStrings) {
+    print("All items match.")
+} else {
+    print("Not all items match.")
+}
+// Prints "All items match.
 
 
+/// Extension with a Generic Where Clause
+
+//You can also use a generic where clause as part of an extension.
+//The example below extends the generic Stack structure from the previous examples to add an isTop(_:) method.
 
 
+/// Extension a class
+extension Stack where Element: Equatable {
+    func isTop(_ item: Element) -> Bool {
+        guard let topItem = items.last else {
+            return false
+        }
+        return topItem == item
+    }
+}
+
+if stackOfStrings.isTop("tres") {
+    print("top element is tres")
+}
+
+/// Extension a protocol
+extension Container where Item: Equatable {
+    func startsWith(_ item: Item) -> Bool {
+        return count >= 1 && self[0] == item
+    }
+}
+
+if [9, 9, 9].startsWith(42) {
+    print("Starts with 42.")
+} else {
+    print("Starts with something else.")
+}
+// Prints "Starts with something else.
+
+
+// you can also write a generic where clauses that require Item to be a specific type. For example:
+extension Container where Item == Double {
+    func average() -> Double {
+        var sum = 0.0
+        for index in 0..<count {
+            sum += self[index]
+        }
+        return sum / Double(count)
+    }
+}
+
+print([1260.0, 1200.0, 98.6, 37.0].average())
+
+/// Associated Types with a Generic Where Clause
+
+protocol IteratableContainer {
+    associatedtype Item
+    mutating func append(_ item: Item)
+    var count: Int { get }
+    subscript(i: Int) -> Item { get }
+    
+    associatedtype Iterator: IteratorProtocol where Iterator.Element == Item
+    func makeIterator() -> Iterator
+}
+
+// For a protocol that inherits from another protocol, you add a constraint to an inherited associated type by including the generic where clause in the protocol declaration.
+
+protocol ComparableContainer: Container where Item: Comparable {
+    
+}
+
+
+/// Generic Subscrips
+
+// Subscripts can be generic, and they can include generic where clauses. You write the placeholder type name inside angle brackets after subscript, and you write a generic where clause right before the opening curly brace of the subscript’s body. For example:
+extension Container {
+    subscript<Indices: Sequence>(indices: Indices) -> [Item]
+        where Indices.Iterator.Element == Int {
+            var result = [Item]()
+            for index in indices {
+                result.append(self[index])
+            }
+            return result
+    }
+}
